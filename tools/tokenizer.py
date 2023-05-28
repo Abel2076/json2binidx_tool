@@ -21,11 +21,9 @@ from abc import ABC
 from abc import abstractmethod
 
 from tokenizers import Tokenizer
-
-import numpy as np
+from rwkv_tokenizer import RWKV_TOKENIZER
 
 from typing import List, Union
-
 
 
 def build_tokenizer(args):
@@ -38,6 +36,9 @@ def build_tokenizer(args):
     if args.tokenizer_type.lower() == "HFTokenizer".lower():
         assert args.vocab_file is not None
         tokenizer = HFTokenizer(args.vocab_file)
+    elif args.tokenizer_type.lower() == "RWKVTokenizer".lower():
+        assert args.vocab_file is not None
+        tokenizer = RWKVTokenizer(args.vocab_file)
     else:
         raise NotImplementedError(
             "{} tokenizer is not " "implemented.".format(args.tokenizer_type)
@@ -166,3 +167,39 @@ class HFTokenizer(AbstractTokenizer):
     def eod(self):
         return self.eod_id
 
+
+class RWKVTokenizer(AbstractTokenizer):
+    """RWKV Worlds Tokenizer."""
+
+    def __init__(self, vocab_file='rwkv_vocab_v20230424.txt'):
+        name = "RWKVTokenizer"
+        super().__init__(name)
+
+        self.tokenizer = RWKV_TOKENIZER(vocab_file)
+        self.eod_id = 0  # self.tokenizer.token_to_id("<|endoftext|>")
+        # self.pad_id = self.tokenizer.token_to_id("<|padding|>")
+
+    @property
+    def vocab_size(self):
+        return self.tokenizer.get_vocab_size()
+
+    @property
+    def vocab(self):
+        return self.tokenizer.get_vocab()
+
+    @property
+    def inv_vocab(self):
+        return self.tokenizer.decode
+
+    def tokenize(self, text: str):
+        return self.tokenizer.encode(text)
+
+    def tokenize_batch(self, text_batch: Union[List[str], str]):
+        return self.tokenizer.encode_batch(text_batch)
+
+    def detokenize(self, token_ids):
+        return self.tokenizer.decode(token_ids)
+
+    @property
+    def eod(self):
+        return self.eod_id
