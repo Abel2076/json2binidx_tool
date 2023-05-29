@@ -21,7 +21,7 @@ from abc import ABC
 from abc import abstractmethod
 
 from tokenizers import Tokenizer
-from rwkv_tokenizer import RWKV_TOKENIZER
+from rwkv_tokenizer import RWKV_TOKENIZER, TRIE_TOKENIZER
 
 from typing import List, Union
 
@@ -175,7 +175,7 @@ class RWKVTokenizer(AbstractTokenizer):
         name = "RWKVTokenizer"
         super().__init__(name)
 
-        self.tokenizer = RWKV_TOKENIZER(vocab_file)
+        self.tokenizer = TRIE_TOKENIZER(vocab_file)
         self.eod_id = 0  # self.tokenizer.token_to_id("<|endoftext|>")
         # self.pad_id = self.tokenizer.token_to_id("<|padding|>")
 

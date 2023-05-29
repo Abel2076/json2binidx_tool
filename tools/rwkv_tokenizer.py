@@ -173,6 +173,7 @@ class TRIE:
 
 class TRIE_TOKENIZER():
     def __init__(self, file_name):
+        self.vocab_size = 65525
         self.idx2token = {}
         sorted = [] # must be already sorted
         with open(file_name, "r", encoding="utf-8") as f:
@@ -213,6 +214,12 @@ class TRIE_TOKENIZER():
 
     def decode(self, tokens):
         return self.decodeBytes(tokens).decode('utf-8')
+
+    def get_vocab_size(self):
+        return self.vocab_size
+
+    def get_vocab(self):
+        return self.idx2token
 
     def printTokens(self, tokens):
         for i in tokens:
