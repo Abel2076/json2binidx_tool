@@ -38,6 +38,9 @@ def build_tokenizer(args):
     if args.tokenizer_type.lower() == "HFTokenizer".lower():
         assert args.vocab_file is not None
         tokenizer = HFTokenizer(args.vocab_file)
+    elif args.tokenizer_type.lower() == "RWKVWorld".lower():
+        assert args.vocab_file is not None
+        tokenizer = RWKVTokenizer(args)
     else:
         raise NotImplementedError(
             "{} tokenizer is not " "implemented.".format(args.tokenizer_type)
@@ -166,3 +169,26 @@ class HFTokenizer(AbstractTokenizer):
     def eod(self):
         return self.eod_id
 
+class RWKVTokenizer(AbstractTokenizer):
+    def __init__(self, args):
+        name = "RWKVTokenizer"
+        super().__init__(name)
+        
+        from rwkv.utils import PIPELINE
+        self.tokenizer = PIPELINE(None, args.vocab_file)
+    @property
+    def eod(self):
+        return 0
+    def tokenize(self, text: str):
+        return self.tokenizer.encode(text)
+    
+    @property
+    def inv_vocab(self):
+        raise NotImplementedError()
+    @property
+    def vocab(self):
+        raise NotImplementedError()
+    @property
+    def vocab_size(self):
+        # return 65536
+        return len(self.tokenizer.tokenizer.idx2token)
