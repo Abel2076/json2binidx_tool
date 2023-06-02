@@ -38,6 +38,13 @@ def build_tokenizer(args):
     if args.tokenizer_type.lower() == "HFTokenizer".lower():
         assert args.vocab_file is not None
         tokenizer = HFTokenizer(args.vocab_file)
+    elif args.tokenizer_type.lower() == "RWKVTokenizer".lower():
+        assert args.vocab_file is not None
+        import os, rwkv
+        from rwkv.rwkv_tokenizer import TRIE_TOKENIZER
+        tokenizer = TRIE_TOKENIZER(os.path.join(os.path.dirname(os.path.abspath(rwkv.rwkv_tokenizer.__file__)), args.vocab_file))
+        tokenizer.vocab_size = len(tokenizer.idx2token)
+        tokenizer.tokenize = tokenizer.encode
     else:
         raise NotImplementedError(
             "{} tokenizer is not " "implemented.".format(args.tokenizer_type)
