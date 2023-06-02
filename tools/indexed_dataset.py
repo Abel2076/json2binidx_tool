@@ -26,7 +26,7 @@ import torch
 
 
 def __best_fitting_dtype(vocab_size=None):
-    if vocab_size is not None and vocab_size < 65500:
+    if vocab_size is not None and vocab_size < 65536 :
         return np.uint16
     else:
         return np.int32
