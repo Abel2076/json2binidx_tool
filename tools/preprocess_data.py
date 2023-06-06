@@ -93,6 +93,7 @@ def get_args():
             "GPT2BPETokenizer",
             "CharLevelTokenizer",
             "TiktokenTokenizer",
+            "RWKVTokenizer",
         ],
         help="What type of tokenizer to use.",
     )
@@ -223,7 +224,7 @@ def main():
             builders[key].end_document()
 
         # log progress
-        if i % args.log_interval == 0:
+        if i % args.log_interval == 0 or i == args.num_docs:
             current = time.time()
             elapsed = current - proc_start
             mbs = total_bytes_processed / elapsed / 1024 / 1024
