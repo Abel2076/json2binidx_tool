@@ -45,6 +45,7 @@ def build_tokenizer(args):
         tokenizer = TRIE_TOKENIZER(os.path.join(os.path.dirname(os.path.abspath(rwkv.rwkv_tokenizer.__file__)), args.vocab_file))
         tokenizer.vocab_size = len(tokenizer.idx2token)
         tokenizer.tokenize = tokenizer.encode
+        tokenizer.eod = tokenizer.encode("\n\n")[0]
     else:
         raise NotImplementedError(
             "{} tokenizer is not " "implemented.".format(args.tokenizer_type)
