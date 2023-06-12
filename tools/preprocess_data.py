@@ -44,6 +44,19 @@ class Encoder(object):
     def initializer(self):
         # Use Encoder class as a container for global data
         Encoder.tokenizer = build_tokenizer(self.args)
+        Encoder.whitespace_id = Encoder.tokenizer.encode(" ")[0]
+
+    @staticmethod
+    def is_poem(text):
+        return "```ClsNLU\n作诗/" in text
+
+    @staticmethod
+    def is_couplet(text):
+        return "```ClsNLU\n对联\n```" in text
+
+    @staticmethod
+    def is_chinese_ancient_prose(text):
+        return Encoder.is_poem(text) or Encoder.is_couplet(text)
 
     def encode(self, text):
         if self.args.ftfy:
@@ -53,6 +66,8 @@ class Encoder(object):
             doc_ids = []
             text_ids = Encoder.tokenizer.tokenize(text)
             if len(text_ids) > 0:
+                if Encoder.is_chinese_ancient_prose(text):
+                    text_ids = [tid for tid in text_ids if tid != Encoder.whitespace_id]
                 doc_ids.append(text_ids)
             if self.args.append_eod:
                 doc_ids[-1].append(Encoder.tokenizer.eod)
