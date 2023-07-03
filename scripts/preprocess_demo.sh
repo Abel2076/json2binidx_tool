@@ -1,0 +1,1 @@
+python tools/preprocess_data.py --input ./sample.jsonl --output-prefix ./my_data/sample --vocab ./20B_tokenizer.json --dataset-impl mmap --tokenizer-type HFTokenizer --append-eod

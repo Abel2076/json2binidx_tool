@@ -1,0 +1,2 @@
+python tools/preprocess_data.py --input ./jsonl_data/rwkv_test.jsonl --output-prefix ./my_data/test --vocab rwkv_vocab_v20230424.txt --dataset-impl mmap --tokenizer-type RWKVTokenizer  --append-eod --num-docs 1074
+python tools/preprocess_data.py --input ./jsonl_data/rwkv_train.jsonl --output-prefix ./my_data/train --vocab rwkv_vocab_v20230424.txt --dataset-impl mmap --tokenizer-type RWKVTokenizer  --append-eod --num-docs 1659258
