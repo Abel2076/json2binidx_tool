@@ -14,7 +14,7 @@ Benefits:
 
 * Good support of most languages, from European to CJK to Arabic and Hindi and more.
 
-* Clean vocab. Good for code too. Vocab size = 65525 (use 0 for <|endoftext|>).
+* Clean vocab. Good for code too. Vocab size = 65529 (use 0 for <|endoftext|>).
 
 * Good at numbers: the numerical tokens are '0'~'9', '10'~'99', ' 0'~' 9', ' 10'~' 99'.
 
@@ -42,7 +42,7 @@ class RWKV_TOKENIZER():
     good = None  # : list[set[int]]
     wlen = None  # : list[int]
     def __init__(self, file_name):
-        self.vocab_size = 65525
+        self.vocab_size = 65529
         self.idx2token = {}
         sorted = [] # must be already sorted
         lines = open(file_name, "r", encoding="utf-8").readlines()
@@ -173,7 +173,7 @@ class TRIE:
 
 class TRIE_TOKENIZER():
     def __init__(self, file_name):
-        self.vocab_size = 65525
+        self.vocab_size = 65529
         self.idx2token = {}
         sorted = [] # must be already sorted
         with open(file_name, "r", encoding="utf-8") as f:
