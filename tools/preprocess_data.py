@@ -21,6 +21,7 @@ import argparse
 import multiprocessing
 import os
 import sys
+import re
 
 import lm_dataformat as lmd
 import numpy as np
@@ -33,8 +34,17 @@ import tqdm
 import ftfy
 
 from tokenizer import build_tokenizer
+from lm_conversation_dataformat import Reader as lmcd_reader
 import indexed_dataset
 from threading import Semaphore
+
+ROLE_SYSTEM = "System"
+ROLE_USER = "User"
+ROLE_ASSISTANT = "Assistant"
+interface = ":"
+
+data_key_text = "text"
+data_key_mask = "mask"
 
 
 class Encoder(object):
@@ -73,6 +83,48 @@ class Encoder(object):
                 doc_ids[-1].append(Encoder.tokenizer.eod)
             ids[key] = doc_ids
         return ids, len(text)
+
+    def encode_conversation(self, conversations_obj):
+        ids = {}
+        text_bytes = 0
+
+        text_ids = []
+        mask_ids = []
+        for conversation in conversations_obj.get('conversations'):
+            role = ROLE_SYSTEM
+            if conversation.get('from').lower() == ROLE_USER.lower():
+                role = ROLE_USER
+            elif conversation.get('from').lower() == ROLE_ASSISTANT.lower():
+                role = ROLE_ASSISTANT
+
+            utterance = re.sub(r'[\n\r]+', '\n', conversation.get('value')).strip()
+            if self.args.ftfy:
+                utterance = ftfy.fix_text(utterance)
+
+            prefix = f"{role}{interface} "
+            content = f"{utterance}\n\n"
+
+            prefix_ids = Encoder.tokenizer.tokenize(prefix)
+            content_ids = Encoder.tokenizer.tokenize(content)
+
+            text_ids.extend(prefix_ids)
+            text_ids.extend(content_ids)
+
+            mask_ids.extend([0] * len(prefix_ids))
+            if role == ROLE_ASSISTANT:
+                mask_ids.extend([1] * len(content_ids))
+            else:
+                mask_ids.extend([0] * len(content_ids))
+
+            text_bytes += len(content.encode('utf-8'))
+
+        doc_ids = [text_ids]
+        doc_mask = [mask_ids]
+
+        ids[data_key_text] = doc_ids
+        ids[data_key_mask] = doc_mask
+
+        return ids, text_bytes
 
 
 def get_args():
@@ -152,6 +204,13 @@ def get_args():
         default=100,
         help="Interval between progress updates",
     )
+    group.add_argument(
+        "--data-format",
+        type=str,
+        default="text",
+        choices=["text", "conversation"],
+        help="Data format of input jsonl files"
+    )
     args = parser.parse_args()
     args.keep_empty = False
 
@@ -182,6 +241,18 @@ def yield_from_files(fnames: list, semaphore):
         yield from yielder(fname, semaphore)
 
 
+def yield_conversations_from_files(fnames: list, semaphore):
+    def yielder(fname, semaphore):
+        for f in filter(lambda x: x, lmcd_reader(fname).stream_data()):
+            semaphore.acquire()
+            yield f
+
+    for fname in fnames:
+        semaphore.acquire()
+
+        yield from yielder(fname, semaphore)
+
+
 def main():
     args = get_args()
     encoder = Encoder(args)
@@ -194,31 +265,42 @@ def main():
     semaphore = Semaphore(10000 + args.workers)
 
     # use multiprocessing to iterate over input documents
-    fin = yield_from_files(args.input.split(","), semaphore)
+    if args.data_format == "conversation":
+        fin = yield_conversations_from_files(args.input.split(","), semaphore)
+        encode_fn = encoder.encode_conversation
+    else:
+        fin = yield_from_files(args.input.split(","), semaphore)
+        encode_fn = encoder.encode
 
     if args.workers > 1:
         pool = multiprocessing.Pool(args.workers, initializer=encoder.initializer)
-        encoded_docs = pool.imap(encoder.encode, fin, chunksize=25)
+        encoded_docs = pool.imap(encode_fn, fin, chunksize=25)
     else:
         encoder.initializer()
-        encoded_docs = (encoder.encode(doc) for doc in fin)
+        encoded_docs = (encode_fn(doc) for doc in fin)
 
     # make a dataset builder for each key in args.jsonl_keys
     # each key will output to a different file beginning with args.output_prefix
     output_bin_files = {}
     output_idx_files = {}
     builders = {}
-    for key in args.jsonl_keys:
+    data_keys = args.jsonl_keys
+    if args.data_format == "conversation":
+        data_keys = [data_key_text, data_key_mask]
+    for key in data_keys:
         output_bin_files[key] = "{}_{}_{}.bin".format(
             args.output_prefix, key, "document"
         )
         output_idx_files[key] = "{}_{}_{}.idx".format(
             args.output_prefix, key, "document"
         )
+        vocab_size = tokenizer.vocab_size
+        if key == data_key_mask:
+            vocab_size = 2
         builders[key] = indexed_dataset.make_builder(
             output_bin_files[key],
             impl=args.dataset_impl,
-            vocab_size=tokenizer.vocab_size,
+            vocab_size=vocab_size,
         )
 
     # actually do tokenization
@@ -250,7 +332,7 @@ def main():
                 pbar.update(args.log_interval)
 
     # save output file
-    for key in args.jsonl_keys:
+    for key in data_keys:
         builders[key].finalize(output_idx_files[key])
 
 
